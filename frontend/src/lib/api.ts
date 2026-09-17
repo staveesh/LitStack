@@ -25,13 +25,16 @@ export const api = {
       req<import("./types").Paper>("/api/papers", { method: "POST", body: JSON.stringify(body) }),
     update: (id: number, body: Partial<import("./types").Paper>) =>
       req<import("./types").Paper>(`/api/papers/${id}`, { method: "PUT", body: JSON.stringify(body) }),
-    delete: (id: number) => req<void>(`/api/papers/${id}`, { method: "DELETE" }),
+    delete: (id: number, zotero = false) =>
+      req<void>(`/api/papers/${id}${zotero ? "?zotero=true" : ""}`, { method: "DELETE" }),
     linkRQ: (paperId: number, rqId: number) =>
       req<void>(`/api/papers/${paperId}/research-questions/${rqId}`, { method: "POST" }),
     unlinkRQ: (paperId: number, rqId: number) =>
       req<void>(`/api/papers/${paperId}/research-questions/${rqId}`, { method: "DELETE" }),
     linkProject: (paperId: number, projectId: number) =>
       req<void>(`/api/papers/${paperId}/projects/${projectId}`, { method: "POST" }),
+    unlinkProject: (paperId: number, projectId: number) =>
+      req<void>(`/api/papers/${paperId}/projects/${projectId}`, { method: "DELETE" }),
   },
 
   // Reading intents

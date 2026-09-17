@@ -1,4 +1,4 @@
-"""Zotero Web API client. Zotero is a read-only source; we never write back to it."""
+"""Zotero Web API client."""
 import os
 from pathlib import Path
 from datetime import datetime, timezone
@@ -45,41 +45,37 @@ class ZoteroClient:
     def _items_url(self) -> str:
         key = settings.zotero_collection_key
         if key:
-            return f"{self._base}/collections/{key}/items"
-        return f"{self._base}/items"
-
-    async def fetch_items(self, since_version: int = 0, limit: int = 100, start: int = 0) -> tuple[list[dict], int]:
-        """Returns (items, library_version)."""
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(
-                self._items_url(),
-                headers=self._headers(),
-                params={
-                    "since": since_version,
-                    "limit": limit,
-                    "start": start,
-                    "format": "json",
-                },
-            )
-            resp.raise_for_status()
-            library_version = int(resp.headers.get("Last-Modified-Version", 0))
-            # Filter out attachments and notes in Python (avoids httpx encoding issues with Zotero's || syntax)
-            items = [
-                i for i in resp.json()
-                if i.get("data", {}).get("itemType") not in ("attachment", "note")
-            ]
-            return items, library_version
+            return f"{self._base}/collections/{key}/items/top"
+        return f"{self._base}/items/top"
 
     async def fetch_all_items(self, since_version: int = 0) -> tuple[list[dict], int]:
-        items, version = [], 0
-        start = 0
+        items, version, start = [], 0, 0
         while True:
-            batch, version = await self.fetch_items(since_version=since_version, limit=100, start=start)
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(
+                    self._items_url(),
+                    headers=self._headers(),
+                    params={"since": since_version, "limit": 100, "start": start, "format": "json"},
+                )
+                resp.raise_for_status()
+                version = int(resp.headers.get("Last-Modified-Version", 0))
+                raw = resp.json()
+            # Filter standalone attachments/notes; /top already excludes child items
+            batch = [i for i in raw if i.get("data", {}).get("itemType") not in ("attachment", "note")]
             items.extend(batch)
-            if len(batch) < 100:
+            if len(raw) < 100:  # paginate on raw count, not filtered
                 break
             start += 100
         return items, version
+
+    async def delete_item(self, item_key: str, version: int) -> None:
+        """Delete a Zotero item. Raises httpx.HTTPStatusError on failure."""
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.delete(
+                f"{self._base}/items/{item_key}",
+                headers={**self._headers(), "If-Unmodified-Since-Version": str(version)},
+            )
+            resp.raise_for_status()
 
     async def download_pdf(self, item_key: str) -> str | None:
         """Download PDF attachment for a Zotero item. Returns local path or None."""
@@ -149,17 +145,7 @@ async def sync_zotero(db: AsyncSession) -> dict:
     if not client.api_key or not client.library_id:
         return {"error": "Zotero not configured. Set ZOTERO_API_KEY and ZOTERO_LIBRARY_ID."}
 
-    # Get last known version from most recent log
-    last_log = (await db.execute(
-        select(AIOperationLog)
-        .where(AIOperationLog.operation_type == "zotero_sync")
-        .order_by(AIOperationLog.created_at.desc())
-        .limit(1)
-    )).scalar_one_or_none()
-
-    since_version = last_log.output.get("library_version", 0) if last_log and last_log.output else 0
-
-    items, library_version = await client.fetch_all_items(since_version=since_version)
+    items, library_version = await client.fetch_all_items(since_version=0)
 
     imported, updated, skipped = 0, 0, 0
     for item in items:

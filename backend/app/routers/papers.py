@@ -21,6 +21,7 @@ router = APIRouter(prefix="/papers", tags=["papers"])
 async def list_papers(
     status: Optional[WorkflowStatus] = None,
     project_id: Optional[int] = None,
+    research_question_id: Optional[int] = None,
     q: Optional[str] = None,
     limit: int = Query(50, le=200),
     offset: int = 0,
@@ -31,6 +32,8 @@ async def list_papers(
         stmt = stmt.where(Paper.workflow_status == status)
     if project_id:
         stmt = stmt.where(Paper.projects.any(id=project_id))
+    if research_question_id:
+        stmt = stmt.where(Paper.research_questions.any(id=research_question_id))
     if q:
         stmt = stmt.where(
             or_(
@@ -83,10 +86,20 @@ async def update_paper(paper_id: int, body: PaperUpdate, db: AsyncSession = Depe
 
 
 @router.delete("/{paper_id}", status_code=204)
-async def delete_paper(paper_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_paper(
+    paper_id: int,
+    zotero: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
     paper = await db.get(Paper, paper_id)
     if not paper:
         raise HTTPException(404, "Paper not found")
+    if zotero and paper.zotero_key and paper.zotero_version is not None:
+        from app.services.zotero import ZoteroClient
+        try:
+            await ZoteroClient().delete_item(paper.zotero_key, paper.zotero_version)
+        except Exception as e:
+            raise HTTPException(502, f"Zotero delete failed: {e}")
     await db.delete(paper)
     await db.commit()
 
@@ -141,6 +154,22 @@ async def link_project(paper_id: int, project_id: int, db: AsyncSession = Depend
         raise HTTPException(404, "Project not found")
     if proj not in paper.projects:
         paper.projects.append(proj)
+        db.add(paper)
+        await db.commit()
+
+
+@router.delete("/{paper_id}/projects/{project_id}", status_code=204)
+async def unlink_project(paper_id: int, project_id: int, db: AsyncSession = Depends(get_db)):
+    from app.models import Project
+    result = await db.execute(
+        select(Paper).options(selectinload(Paper.projects)).where(Paper.id == paper_id)
+    )
+    paper = result.scalar_one_or_none()
+    if not paper:
+        raise HTTPException(404, "Paper not found")
+    proj = await db.get(Project, project_id)
+    if proj and proj in paper.projects:
+        paper.projects.remove(proj)
         db.add(paper)
         await db.commit()
 

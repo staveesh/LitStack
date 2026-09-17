@@ -115,43 +115,69 @@ export default function PaperDetailPage() {
     setPaper(updated);
   }
 
-  if (loading) return <div className="p-6 text-gray-400">Loading…</div>;
-  if (!paper) return <div className="p-6 text-red-500">Paper not found</div>;
+  async function toggleProject(projectId: number) {
+    if (!paper) return;
+    const linked = paper.project_ids?.includes(projectId);
+    if (linked) {
+      await api.papers.unlinkProject(paperId, projectId);
+    } else {
+      await api.papers.linkProject(paperId, projectId);
+    }
+    const updated = await api.papers.get(paperId);
+    setPaper(updated);
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Loading…</div>
+  );
+  if (!paper) return (
+    <div className="p-8 text-red-500 text-sm">Paper not found</div>
+  );
 
   const linkedRQIds = new Set(paper.research_question_ids ?? []);
   const linkedRQs = rqs.filter(rq => linkedRQIds.has(rq.id));
+  const linkedProjectIds = new Set(paper.project_ids ?? []);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <button onClick={() => router.back()} className="text-xs text-gray-400 hover:text-gray-600 mb-3 block">
-          ← Back
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900 leading-tight">{paper.title}</h1>
-        <p className="text-sm text-gray-500 mt-1">
+    <div className="p-8 max-w-4xl mx-auto">
+      {/* Back */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 mb-6 transition-colors group"
+      >
+        <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
+        Back
+      </button>
+
+      {/* Header card */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-card p-6 mb-6">
+        <h1 className="text-xl font-bold text-slate-900 leading-tight mb-2">{paper.title}</h1>
+        <p className="text-sm text-slate-400 mb-4">
           {paper.authors.join(", ")}
           {paper.year ? ` · ${paper.year}` : ""}
           {paper.venue ? ` · ${paper.venue}` : ""}
           {paper.citation_key ? ` · ${paper.citation_key}` : ""}
         </p>
-        <div className="flex items-center gap-3 mt-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <select
             value={paper.workflow_status}
             onChange={e => updateStatus(e.target.value as WorkflowStatus)}
-            className="text-sm border rounded px-2 py-1"
+            className="text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer"
           >
             {WORKFLOW_OPTIONS.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
+          <WorkflowBadge status={paper.workflow_status} />
           {paper.doi && (
-            <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noopener" className="text-xs text-blue-500 hover:underline">
+            <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noopener"
+              className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline transition-colors">
               DOI ↗
             </a>
           )}
           {paper.url && (
-            <a href={paper.url} target="_blank" rel="noopener" className="text-xs text-blue-500 hover:underline">
+            <a href={paper.url} target="_blank" rel="noopener"
+              className="text-xs text-indigo-500 hover:text-indigo-700 hover:underline transition-colors">
               URL ↗
             </a>
           )}
@@ -160,25 +186,23 @@ export default function PaperDetailPage() {
 
       {/* Abstract */}
       {paper.abstract && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Abstract</h3>
-          <p className="text-sm text-gray-700 leading-relaxed">{paper.abstract}</p>
+        <div className="mb-6 p-5 bg-white border border-slate-200 rounded-xl shadow-card">
+          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Abstract</h3>
+          <p className="text-sm text-slate-600 leading-relaxed">{paper.abstract}</p>
         </div>
       )}
 
       {/* Reading intents */}
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-          Why am I reading this?
-        </h2>
-        <div className="space-y-2">
+      <section className="mb-6 bg-white border border-slate-200 rounded-xl shadow-card p-5">
+        <h2 className="text-sm font-semibold text-slate-700 mb-3">Why am I reading this?</h2>
+        <div className="space-y-2 mb-3">
           {intents.map(intent => (
             <div
               key={intent.id}
-              className={`p-3 rounded border text-sm ${
+              className={`px-4 py-2.5 rounded-lg border text-sm transition-colors ${
                 intent.resolved_at
-                  ? "border-gray-200 bg-gray-50 text-gray-400 line-through"
-                  : "border-blue-200 bg-blue-50 text-blue-800"
+                  ? "border-slate-200 bg-slate-50 text-slate-400 line-through"
+                  : "border-indigo-200 bg-indigo-50 text-indigo-800"
               }`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -186,7 +210,7 @@ export default function PaperDetailPage() {
                 {!intent.resolved_at && (
                   <button
                     onClick={() => resolveIntent(intent.id)}
-                    className="text-xs text-blue-500 hover:underline shrink-0"
+                    className="text-xs text-indigo-400 hover:text-indigo-600 hover:underline shrink-0 transition-colors"
                   >
                     Resolve
                   </button>
@@ -195,63 +219,61 @@ export default function PaperDetailPage() {
             </div>
           ))}
         </div>
-        <div className="flex gap-2 mt-2">
+        <div className="flex gap-2">
           <input
             value={newIntent}
             onChange={e => setNewIntent(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addIntent()}
             placeholder="Add a reading intent…"
-            className="flex-1 text-sm border rounded px-3 py-1.5"
+            className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-300 transition-all"
           />
           <button
             onClick={addIntent}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
           >
             Add
           </button>
         </div>
       </section>
 
-      {/* Tabs: Extraction / My Notes / Connections */}
-      <div className="border-b mb-4">
-        <div className="flex gap-0">
-          {(["extraction", "notes", "connections"] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab
-                  ? "border-blue-600 text-blue-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {tab === "extraction" ? "AI Extraction" : tab === "notes" ? "My Notes" : "Connections"}
-            </button>
-          ))}
-        </div>
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 mb-5">
+        {(["extraction", "notes", "connections"] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-5 py-2.5 text-sm font-medium border-b-2 transition-all ${
+              activeTab === tab
+                ? "border-indigo-600 text-indigo-700"
+                : "border-transparent text-slate-400 hover:text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            {tab === "extraction" ? "AI Extraction" : tab === "notes" ? "My Notes" : "Connections"}
+          </button>
+        ))}
       </div>
 
       {/* Extraction tab */}
       {activeTab === "extraction" && (
-        <div>
-          <div className="flex items-center gap-3 mb-4">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-card p-5">
+          <div className="flex items-center gap-3 mb-5">
             <AIBadge model={extraction?.model_name} version={extraction?.prompt_version} />
             {extraction?.confidence && (
-              <span className="text-xs text-gray-400">
-                Confidence: {(extraction.confidence * 100).toFixed(0)}%
+              <span className="text-xs text-slate-400">
+                {(extraction.confidence * 100).toFixed(0)}% confident
               </span>
             )}
             <button
               onClick={triggerExtraction}
               disabled={extracting || !paper.pdf_path}
-              className="ml-auto px-3 py-1 text-xs bg-amber-500 text-white rounded hover:bg-amber-600 disabled:opacity-50"
+              className="ml-auto px-4 py-1.5 text-xs font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors shadow-sm"
             >
               {extracting ? "Extracting…" : paper.pdf_path ? "Run AI Extraction" : "No PDF"}
             </button>
           </div>
 
           {!extraction && (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-slate-400 text-center py-8">
               No extraction yet. {paper.pdf_path ? "Click 'Run AI Extraction' above." : "PDF required."}
             </p>
           )}
@@ -279,58 +301,25 @@ export default function PaperDetailPage() {
 
       {/* My Notes tab */}
       {activeTab === "notes" && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-card p-5">
+          <div className="flex items-center gap-2 mb-5">
             <HumanBadge />
-            <span className="text-xs text-gray-400">Your interpretations — never overwritten by AI</span>
+            <span className="text-xs text-slate-400">Your interpretations — never overwritten by AI</span>
           </div>
           <div className="human-content space-y-4">
-            <NoteField
-              label="Why I care"
-              value={notesDraft.why_i_care ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, why_i_care: v }))}
-            />
-            <NoteField
-              label="What surprised me"
-              value={notesDraft.what_surprised_me ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, what_surprised_me: v }))}
-            />
-            <NoteField
-              label="What I don't believe"
-              value={notesDraft.what_i_dont_believe ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, what_i_dont_believe: v }))}
-            />
-            <NoteField
-              label="Relation to my work"
-              value={notesDraft.relation_to_my_work ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, relation_to_my_work: v }))}
-            />
-            <NoteField
-              label="What I might cite this for"
-              value={notesDraft.what_i_might_cite_this_for ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, what_i_might_cite_this_for: v }))}
-            />
-            <NoteField
-              label="Methodological ideas"
-              value={notesDraft.methodological_ideas ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, methodological_ideas: v }))}
-            />
-            <NoteField
-              label="Unanswered questions"
-              value={notesDraft.unanswered_questions ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, unanswered_questions: v }))}
-            />
-            <NoteField
-              label="Freeform notes"
-              value={notesDraft.freeform_notes ?? ""}
-              onChange={v => setNotesDraft(prev => ({ ...prev, freeform_notes: v }))}
-              rows={6}
-            />
+            <NoteField label="Why I care" value={notesDraft.why_i_care ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, why_i_care: v }))} />
+            <NoteField label="What surprised me" value={notesDraft.what_surprised_me ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, what_surprised_me: v }))} />
+            <NoteField label="What I don't believe" value={notesDraft.what_i_dont_believe ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, what_i_dont_believe: v }))} />
+            <NoteField label="Relation to my work" value={notesDraft.relation_to_my_work ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, relation_to_my_work: v }))} />
+            <NoteField label="What I might cite this for" value={notesDraft.what_i_might_cite_this_for ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, what_i_might_cite_this_for: v }))} />
+            <NoteField label="Methodological ideas" value={notesDraft.methodological_ideas ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, methodological_ideas: v }))} />
+            <NoteField label="Unanswered questions" value={notesDraft.unanswered_questions ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, unanswered_questions: v }))} />
+            <NoteField label="Freeform notes" value={notesDraft.freeform_notes ?? ""} onChange={v => setNotesDraft(prev => ({ ...prev, freeform_notes: v }))} rows={6} />
           </div>
           <button
             onClick={saveNotes}
             disabled={savingNotes}
-            className="mt-4 px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50"
+            className="mt-5 px-5 py-2 font-medium bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
           >
             {savingNotes ? "Saving…" : "Save Notes"}
           </button>
@@ -339,38 +328,60 @@ export default function PaperDetailPage() {
 
       {/* Connections tab */}
       {activeTab === "connections" && (
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Research Questions</h3>
+        <div className="space-y-5">
+          {/* Projects */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-card p-5">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Projects</h3>
             <div className="space-y-2">
-              {rqs.map(rq => (
-                <label key={rq.id} className="flex items-start gap-2 cursor-pointer group">
+              {projects.map(proj => (
+                <label key={proj.id} className="flex items-center gap-3 cursor-pointer group">
                   <input
                     type="checkbox"
-                    checked={linkedRQIds.has(rq.id)}
-                    onChange={() => toggleRQ(rq.id)}
-                    className="mt-0.5"
+                    checked={linkedProjectIds.has(proj.id)}
+                    onChange={() => toggleProject(proj.id)}
+                    className="accent-indigo-600"
                   />
-                  <div>
-                    <span className="text-sm text-gray-800 group-hover:text-blue-700">{rq.question}</span>
-                    <span className="ml-2 text-xs text-gray-400">{rq.status.replace("_", " ")}</span>
-                  </div>
+                  <span className="text-sm text-slate-700 group-hover:text-indigo-700 transition-colors">{proj.name}</span>
                 </label>
               ))}
-              {rqs.length === 0 && (
-                <p className="text-sm text-gray-400">No research questions. Create some in a project first.</p>
+              {projects.length === 0 && (
+                <p className="text-sm text-slate-400">No projects yet. Create one first.</p>
               )}
             </div>
           </div>
 
-          {linkedRQs.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Linked Questions</h3>
-              {linkedRQs.map(rq => (
-                <div key={rq.id} className="text-sm text-blue-700 py-1">· {rq.question}</div>
+          {/* Research Questions */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-card p-5">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Research Questions</h3>
+            <div className="space-y-2">
+              {rqs.map(rq => (
+                <label key={rq.id} className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={linkedRQIds.has(rq.id)}
+                    onChange={() => toggleRQ(rq.id)}
+                    className="mt-0.5 accent-indigo-600"
+                  />
+                  <div>
+                    <span className="text-sm text-slate-700 group-hover:text-indigo-700 transition-colors">{rq.question}</span>
+                    <span className="ml-2 text-xs text-slate-400">{rq.status.replace("_", " ")}</span>
+                  </div>
+                </label>
               ))}
+              {rqs.length === 0 && (
+                <p className="text-sm text-slate-400">No research questions. Create some in a project first.</p>
+              )}
             </div>
-          )}
+
+            {linkedRQs.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Linked</p>
+                {linkedRQs.map(rq => (
+                  <div key={rq.id} className="text-sm text-indigo-600 py-0.5">· {rq.question}</div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -381,8 +392,8 @@ function ExtractionField({ label, value }: { label: string; value: string | null
   if (!value) return null;
   return (
     <div>
-      <dt className="text-xs font-semibold text-amber-700 uppercase tracking-wide">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-800 leading-relaxed">{value}</dd>
+      <dt className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-1">{label}</dt>
+      <dd className="text-sm text-slate-700 leading-relaxed">{value}</dd>
     </div>
   );
 }
@@ -391,10 +402,15 @@ function ExtractionList({ label, items }: { label: string; items: string[] }) {
   if (!items || items.length === 0) return null;
   return (
     <div>
-      <dt className="text-xs font-semibold text-amber-700 uppercase tracking-wide">{label}</dt>
-      <dd className="mt-1">
-        <ul className="list-disc list-inside space-y-0.5">
-          {items.map((item, i) => <li key={i} className="text-sm text-gray-800">{item}</li>)}
+      <dt className="text-xs font-semibold text-amber-600 uppercase tracking-widest mb-1">{label}</dt>
+      <dd>
+        <ul className="space-y-1">
+          {items.map((item, i) => (
+            <li key={i} className="text-sm text-slate-700 flex gap-2">
+              <span className="text-amber-400 shrink-0">·</span>
+              {item}
+            </li>
+          ))}
         </ul>
       </dd>
     </div>
@@ -411,7 +427,7 @@ function NoteField({
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-green-700 uppercase tracking-wide block mb-1">
+      <label className="text-xs font-semibold text-emerald-700 uppercase tracking-widest block mb-1.5">
         {label}
       </label>
       <textarea
@@ -419,7 +435,7 @@ function NoteField({
         onChange={e => onChange(e.target.value)}
         rows={rows}
         placeholder={`Your ${label.toLowerCase()}…`}
-        className="w-full text-sm border border-green-200 rounded px-3 py-2 resize-y focus:outline-none focus:border-green-400 bg-white"
+        className="w-full text-sm border border-emerald-200 rounded-lg px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-300 bg-white transition-all leading-relaxed"
       />
     </div>
   );

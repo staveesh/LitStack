@@ -3,20 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 body {
   font-family: var(--font-sans);
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-slate-50 text-slate-900;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* AI vs human content distinction */
 .ai-content {
-  @apply bg-ai-bg border border-ai-border rounded p-3;
+  @apply bg-amber-50 border border-amber-200 rounded-xl p-4;
 }
 
 .human-content {
-  @apply bg-human-bg border border-human-border rounded p-3;
+  @apply bg-emerald-50 border border-emerald-200 rounded-xl p-4;
 }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
