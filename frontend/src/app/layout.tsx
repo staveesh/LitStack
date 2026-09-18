@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-all duration-150"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[0.9rem] text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-all duration-150"
                 >
                   <span className="text-base leading-none opacity-70">{item.icon}</span>
                   {item.label}

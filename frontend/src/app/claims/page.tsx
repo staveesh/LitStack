@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import type { Claim, Evidence, Project } from "@/lib/types";
@@ -21,7 +21,7 @@ const EVIDENCE_COLORS: Record<string, string> = {
   methodological: "text-blue-600",
 };
 
-export default function ClaimsPage() {
+function ClaimsContent() {
   const searchParams = useSearchParams();
   const projectFilter = searchParams.get("project");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -60,7 +60,7 @@ export default function ClaimsPage() {
     <div className="p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Claim Ledger</h1>
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-center gap-3">
         <select
           value={selectedProject}
           onChange={e => setSelectedProject(e.target.value ? Number(e.target.value) : "")}
@@ -69,6 +69,19 @@ export default function ClaimsPage() {
           <option value="">Select a project</option>
           {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
+        {selectedProject && (
+          <button
+            onClick={async () => {
+              const text = await api.projects.exportBibtex(Number(selectedProject));
+              const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+              Object.assign(document.createElement("a"), { href: url, download: "references.bib" }).click();
+              URL.revokeObjectURL(url);
+            }}
+            className="text-sm border rounded px-3 py-1.5 hover:bg-gray-50"
+          >
+            Export BibTeX
+          </button>
+        )}
       </div>
 
       {!selectedProject && (
@@ -141,5 +154,13 @@ export default function ClaimsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ClaimsPage() {
+  return (
+    <Suspense>
+      <ClaimsContent />
+    </Suspense>
   );
 }

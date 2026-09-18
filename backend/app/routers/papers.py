@@ -25,6 +25,8 @@ async def list_papers(
     q: Optional[str] = None,
     limit: int = Query(50, le=200),
     offset: int = 0,
+    sort_by: Optional[str] = None,
+    sort_dir: str = "desc",
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Paper)
@@ -42,7 +44,12 @@ async def list_papers(
                 Paper.citation_key.ilike(f"%{q}%"),
             )
         )
-    stmt = stmt.order_by(Paper.created_at.desc()).limit(limit).offset(offset)
+    if sort_by == "year":
+        col = Paper.year.asc() if sort_dir == "asc" else Paper.year.desc()
+        stmt = stmt.order_by(col)
+    else:
+        stmt = stmt.order_by(Paper.created_at.desc())
+    stmt = stmt.limit(limit).offset(offset)
     result = await db.execute(stmt)
     return result.scalars().all()
 

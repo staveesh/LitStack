@@ -88,6 +88,8 @@ export const api = {
       }),
     claims: (projectId: number) =>
       req<import("./types").Claim[]>(`/api/projects/${projectId}/claims`),
+    exportBibtex: (projectId: number) =>
+      fetch(`${BASE}/api/projects/${projectId}/claims/bibtex`).then(r => r.text()),
     createClaim: (projectId: number, body: { claim: string; notes?: string }) =>
       req<import("./types").Claim>(`/api/projects/${projectId}/claims`, {
         method: "POST",

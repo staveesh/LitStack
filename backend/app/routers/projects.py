@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models import Project, ResearchQuestion, Claim, OpenQuestion
+from app.models import Project, ResearchQuestion, Claim, Evidence, OpenQuestion
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut
 from app.schemas.research_question import RQCreate, RQUpdate, RQOut
 from app.schemas.claim import ClaimCreate, ClaimUpdate, ClaimOut, EvidenceCreate, EvidenceOut, OpenQuestionCreate, OpenQuestionUpdate, OpenQuestionOut
@@ -92,6 +94,45 @@ async def create_claim(project_id: int, body: ClaimCreate, db: AsyncSession = De
     await db.commit()
     await db.refresh(claim)
     return claim
+
+
+@router.get("/{project_id}/claims/bibtex", response_class=PlainTextResponse)
+async def export_claims_bibtex(project_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Claim)
+        .where(Claim.project_id == project_id)
+        .options(selectinload(Claim.evidence).selectinload(Evidence.paper))
+    )
+    claims = result.scalars().all()
+
+    papers = {}
+    for claim in claims:
+        for ev in claim.evidence:
+            if ev.paper_id not in papers:
+                papers[ev.paper_id] = ev.paper
+
+    entries = []
+    for paper in papers.values():
+        key = paper.citation_key or f"paper{paper.id}"
+        authors = " and ".join(paper.authors) if paper.authors else "Unknown"
+        lines = [f"@article{{{key},"]
+        lines.append(f"  title = {{{paper.title}}},")
+        lines.append(f"  author = {{{authors}}},")
+        if paper.year:
+            lines.append(f"  year = {{{paper.year}}},")
+        if paper.venue:
+            lines.append(f"  journal = {{{paper.venue}}},")
+        if paper.doi:
+            lines.append(f"  doi = {{{paper.doi}}},")
+        if paper.url:
+            lines.append(f"  url = {{{paper.url}}},")
+        lines.append("}")
+        entries.append("\n".join(lines))
+
+    return PlainTextResponse(
+        "\n\n".join(entries) if entries else "% No cited papers found",
+        headers={"Content-Disposition": 'attachment; filename="references.bib"'},
+    )
 
 
 # ── Open questions ─────────────────────────────────────────────────────────────

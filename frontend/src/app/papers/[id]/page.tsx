@@ -135,8 +135,9 @@ export default function PaperDetailPage() {
   );
 
   const linkedRQIds = new Set(paper.research_question_ids ?? []);
-  const linkedRQs = rqs.filter(rq => linkedRQIds.has(rq.id));
   const linkedProjectIds = new Set(paper.project_ids ?? []);
+  const visibleRqs = linkedProjectIds.size > 0 ? rqs.filter(rq => linkedProjectIds.has(rq.project_id)) : rqs;
+  const linkedRQs = visibleRqs.filter(rq => linkedRQIds.has(rq.id));
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -354,7 +355,7 @@ export default function PaperDetailPage() {
           <div className="bg-white border border-slate-200 rounded-xl shadow-card p-5">
             <h3 className="text-sm font-semibold text-slate-700 mb-3">Research Questions</h3>
             <div className="space-y-2">
-              {rqs.map(rq => (
+              {visibleRqs.map(rq => (
                 <label key={rq.id} className="flex items-start gap-3 cursor-pointer group">
                   <input
                     type="checkbox"
@@ -368,8 +369,10 @@ export default function PaperDetailPage() {
                   </div>
                 </label>
               ))}
-              {rqs.length === 0 && (
-                <p className="text-sm text-slate-400">No research questions. Create some in a project first.</p>
+              {visibleRqs.length === 0 && (
+                <p className="text-sm text-slate-400">
+                  {linkedProjectIds.size > 0 ? "No research questions in the linked projects." : "No research questions. Create some in a project first."}
+                </p>
               )}
             </div>
 

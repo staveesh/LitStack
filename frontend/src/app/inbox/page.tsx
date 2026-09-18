@@ -20,6 +20,7 @@ export default function InboxPage() {
   const [projectFilter, setProjectFilter] = useState<number | "">("");
   const [rqFilter, setRqFilter] = useState<number | "">("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortDir, setSortDir] = useState<"" | "asc" | "desc">("");
   const [triageResults, setTriageResults] = useState<TriageResult[]>([]);
   const [triageProject, setTriageProject] = useState<number | "">("");
   const [page, setPage] = useState(0);
@@ -38,6 +39,7 @@ export default function InboxPage() {
     if (projectFilter) params.project_id = String(projectFilter);
     if (rqFilter) params.research_question_id = String(rqFilter);
     if (searchQuery) params.q = searchQuery;
+    if (sortDir) { params.sort_by = "year"; params.sort_dir = sortDir; }
     const [ps, projs, allRqs] = await Promise.all([
       api.papers.list(params),
       api.projects.list(),
@@ -59,13 +61,13 @@ export default function InboxPage() {
   useEffect(() => {
     setPage(0);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStatus, projectFilter, rqFilter, searchQuery]);
+  }, [filterStatus, projectFilter, rqFilter, searchQuery, sortDir]);
 
   useEffect(() => {
     const t = setTimeout(load, searchQuery ? 300 : 0);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStatus, projectFilter, rqFilter, searchQuery, page]);
+  }, [filterStatus, projectFilter, rqFilter, searchQuery, sortDir, page]);
 
   function toggleSelect(id: number) {
     setSelectedIds(prev => {
@@ -154,7 +156,7 @@ export default function InboxPage() {
           <p className="text-sm text-slate-400 mt-0.5">Page {page + 1}</p>
         </div>
         <div className="flex items-center gap-3">
-          {zoteroStatus.last_sync && (
+          {!!zoteroStatus.last_sync && (
             <span className="text-xs text-slate-400">
               Synced {new Date(zoteroStatus.last_sync as string).toLocaleString()}
             </span>
@@ -182,7 +184,7 @@ export default function InboxPage() {
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value as WorkflowStatus | "")}
-            className="text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer flex-1"
+            className="text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer flex-1 min-w-0"
           >
             <option value="">All statuses</option>
             {WORKFLOW_OPTIONS.map(s => (
@@ -192,7 +194,7 @@ export default function InboxPage() {
           <select
             value={projectFilter}
             onChange={e => { setProjectFilter(e.target.value ? Number(e.target.value) : ""); setRqFilter(""); }}
-            className="text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer flex-1"
+            className="text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer flex-1 min-w-0"
           >
             <option value="">All projects</option>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -200,12 +202,21 @@ export default function InboxPage() {
           <select
             value={rqFilter}
             onChange={e => setRqFilter(e.target.value ? Number(e.target.value) : "")}
-            className="text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer flex-1"
+            className="text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer flex-1 min-w-0"
           >
             <option value="">All questions</option>
             {filteredRqs.map(rq => (
               <option key={rq.id} value={rq.id}>{rq.question}</option>
             ))}
+          </select>
+          <select
+            value={sortDir}
+            onChange={e => setSortDir(e.target.value as "" | "asc" | "desc")}
+            className="text-sm border border-slate-200 rounded-lg px-2.5 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer"
+          >
+            <option value="">Sort: default</option>
+            <option value="desc">Year: newest first</option>
+            <option value="asc">Year: oldest first</option>
           </select>
         </div>
       </div>
