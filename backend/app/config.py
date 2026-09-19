@@ -5,7 +5,7 @@ from typing import Literal
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://papertracker:papertracker@localhost/papertracker"
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,https://lit-stack.vercel.app"
 
     @field_validator("database_url", mode="before")
     @classmethod
